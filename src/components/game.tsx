@@ -3,7 +3,6 @@ import {
   For,
   Show,
   Component,
-  createEffect,
   createSignal,
   onCleanup,
   createMemo,
@@ -15,6 +14,8 @@ import { matrixAsArray } from "../libs/matrix";
 import { moveSnake } from "../libs/move-snake";
 import { isArrayIncludesArray, isArraysEqual } from "../utils/array";
 import { exclude } from "../utils/exclude";
+import { positionIsValid } from "../libs/position-is-valid";
+import { directionIsValid } from "../libs/direction-is-valid";
 
 const Game: Component = () => {
   const [fail, setFail] = createSignal<boolean>(false);
@@ -22,15 +23,14 @@ const Game: Component = () => {
   const [apple, setApple] = createSignal<[number, number] | null>();
   const [snake, setSnake] = createSignal<[number, number][]>([[7, 7]]);
   const [direction, setDirection] = createSignal<Direction>("none");
+  const [lastDirection, setLastDirection] = createSignal<Direction>("none");
 
   const snakeHead = createMemo(() => snake()[0]);
 
   const changeDirection = (newDirection: Direction) => {
-    if (direction() === "up" && newDirection === "down") return;
-    if (direction() === "down" && newDirection === "up") return;
-    if (direction() === "left" && newDirection === "right") return;
-    if (direction() === "right" && newDirection === "left") return;
-    setDirection(newDirection);
+    if (directionIsValid(lastDirection(), newDirection)) {
+      setDirection(newDirection);
+    }
   };
 
   createShortcut(["ArrowUp"], () => changeDirection("up"));
@@ -50,26 +50,25 @@ const Game: Component = () => {
     setApple(candidates[0]);
   };
 
-  const move = () => {
-    if (direction() === "none") return;
+  const move = (direction: Direction) => {
+    if (direction === "none") return;
 
     const isEat = isArraysEqual(apple(), snakeHead());
 
-    setSnake((prev) => moveSnake(prev, direction(), isEat));
+    setSnake((prev) => {
+      const newSnake = moveSnake(prev, direction, isEat);
+      if (positionIsValid(newSnake)) return newSnake;
+      setFail(true);
+      return prev;
+    });
 
     if (isEat) {
       setScore((prev) => prev + 1);
       addApple();
     }
-  };
 
-  createEffect(() => {
-    const [head, ...tail] = snake();
-    const [row, col] = head;
-    const isOutbounds = row < 0 || row > 15 || col < 0 || col > 15;
-    const isEatSelf = isArrayIncludesArray(tail, head);
-    if (isOutbounds || isEatSelf) setFail(true);
-  });
+    setLastDirection(direction);
+  };
 
   const getCellClass = (cell: [number, number]) => {
     if (isArrayIncludesArray(snake(), cell)) {
@@ -82,8 +81,8 @@ const Game: Component = () => {
 
   const interval = setInterval(() => {
     if (!apple()) addApple();
-    if (!fail()) move();
-  }, 400);
+    if (!fail()) move(direction());
+  }, 300);
 
   onCleanup(() => clearInterval(interval));
 
