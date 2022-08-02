@@ -8,83 +8,28 @@ import {
   onCleanup,
   Show,
 } from "solid-js";
-import { shuffle } from "./shuffle";
+import { Apple } from "./apple";
+import { End } from "./end";
+import { Snake } from "./snake";
+import { SnakeHead } from "./snake-head";
+import { shuffle } from "../utils/shuffle";
+import { Direction } from "../types/direction";
+import { matrix, matrixIds } from "../libs/matrix";
+import { moveSnake } from "../libs/move-snake";
+import { toId, toIds } from "../libs/to-id";
 
-type Direction = "up" | "down" | "left" | "right" | "none";
-
-const toId = (item: [number, number]) => `${item[0]}:${item[1]}`;
-const toIds = (arr: [number, number][]): string[] => arr.map(toId);
-
-const array16 = Array.from(new Array(16));
-
-const createMatrix = () =>
-  array16.map((_row, rowIndex) =>
-    array16.map((_col, colIndex) => `${rowIndex}:${colIndex}`)
-  );
-
-const matrix = createMatrix();
-let matrixIds: string[] = [];
-matrix.forEach((cols) => cols.forEach((col) => matrixIds.push(col)));
-
-const moveSnake = (
-  snake: [number, number][],
-  direction: Direction,
-  growth: boolean
-) => {
-  const [head] = snake;
-  let newSnake: [number, number][] = [];
-
-  for (let i = 0; i < snake.length; i++) {
-    if (i === 0) {
-      switch (direction) {
-        case "up":
-          newSnake.push([head[0] - 1, head[1]]);
-          break;
-        case "down":
-          newSnake.push([head[0] + 1, head[1]]);
-          break;
-        case "left":
-          newSnake.push([head[0], head[1] - 1]);
-          break;
-        case "right":
-          newSnake.push([head[0], head[1] + 1]);
-          break;
-      }
-    } else {
-      newSnake.push(snake[i - 1]);
-    }
-  }
-
-  if (growth) {
-    newSnake.push(snake[snake.length - 1]);
-  }
-
-  return newSnake;
-};
-
-const Apple = () => (
-  <div class="flex absolute w-5 h-5 bg-red-500/90 rounded-lg" />
-);
-const SnakeHead = () => (
-  <div class="flex absolute w-5 h-5 bg-lime-500 rounded-sm" />
-);
-const Snake = () => (
-  <div class="flex absolute w-5 h-5 bg-lime-600 rounded-sm" />
-);
-
-const App: Component = () => {
+const Game: Component = () => {
   const [fail, setFail] = createSignal<boolean>(false);
   const [score, setScore] = createSignal<number>(0);
-  const [direction, setDirection] = createSignal<Direction>("none");
   const [apple, setApple] = createSignal<[number, number] | null>();
   const [snake, setSnake] = createSignal<[number, number][]>([[7, 7]]);
+  const [direction, setDirection] = createSignal<Direction>("none");
 
+  const snakeAsIds = createMemo(() => toIds(snake()));
   const appleAsId = createMemo(() => {
     const g = apple();
     return g && toId(g);
   });
-
-  const snakeAsIds = createMemo(() => toIds(snake()));
 
   createShortcut(["ArrowUp"], () => setDirection("up"));
   createShortcut(["ArrowDown"], () => setDirection("down"));
@@ -128,7 +73,6 @@ const App: Component = () => {
     setApple(first);
   };
 
-  // Validate snake position
   createEffect(() => {
     const [head, ...tail] = snake();
     const row = head[0];
@@ -178,16 +122,7 @@ const App: Component = () => {
             )}
           </For>
           <Show when={fail()}>
-            <div class="absolute inset-0 w-full h-full flex flex-col items-center justify-center bg-lime-800 text-white/50 font-medium">
-              <div class="text-xl text-white">Nice try!</div>
-              <div class="mt-1">Score: {score}</div>
-              <button
-                class="bg-lime-700 hover:bg-lime-600 text-white/80 rounded mt-2 px-2"
-                onClick={() => reset()}
-              >
-                Retry
-              </button>
-            </div>
+            <End score={score()} reset={reset} />
           </Show>
         </div>
       </div>
@@ -195,4 +130,4 @@ const App: Component = () => {
   );
 };
 
-export default App;
+export default Game;
