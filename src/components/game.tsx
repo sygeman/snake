@@ -32,7 +32,7 @@ const Game: Component = () => {
 
   const reset = () => {
     setDirection("none");
-    setApple([3, 3]);
+    setApple(null);
     setSnake([[5, 5]]);
     setFail(false);
   };
@@ -43,27 +43,24 @@ const Game: Component = () => {
   };
 
   const move = () => {
-    if (["up", "down", "left", "right"].includes(direction())) {
-      const isEat = isArraysEqual(apple(), snakeHead());
+    if (direction() === "none") return;
 
-      setSnake((prev) => moveSnake(prev, direction(), isEat));
-      if (isEat) {
-        setScore((prev) => prev + 1);
-        addApple();
-      }
+    const isEat = isArraysEqual(apple(), snakeHead());
+
+    setSnake((prev) => moveSnake(prev, direction(), isEat));
+
+    if (isEat) {
+      setScore((prev) => prev + 1);
+      addApple();
     }
   };
 
   createEffect(() => {
     const [head, ...tail] = snake();
-    const row = head[0];
-    const col = head[1];
+    const [row, col] = head;
     const isOutbounds = row < 0 || row > 15 || col < 0 || col > 15;
-    const isEatSelf = !!tail.find((pos) => row === pos[0] && col === pos[1]);
-
-    if (isOutbounds || isEatSelf) {
-      setFail(true);
-    }
+    const isEatSelf = isArrayIncludesArray(tail, head);
+    if (isOutbounds || isEatSelf) setFail(true);
   });
 
   const getCellClass = (cell: [number, number]) => {
