@@ -1,22 +1,20 @@
 import { createShortcut } from "@solid-primitives/keyboard";
 import {
+  For,
+  Show,
   Component,
   createEffect,
-  createMemo,
   createSignal,
-  For,
   onCleanup,
-  Show,
+  createMemo,
 } from "solid-js";
-import { Apple } from "./apple";
 import { End } from "./end";
-import { Snake } from "./snake";
-import { SnakeHead } from "./snake-head";
 import { shuffle } from "../utils/shuffle";
 import { Direction } from "../types/direction";
-import { matrix, matrixIds } from "../libs/matrix";
+import { matrixAsArray } from "../libs/matrix";
 import { moveSnake } from "../libs/move-snake";
-import { toId, toIds } from "../libs/to-id";
+import { isArrayIncludesArray, isArraysEqual } from "../utils/array";
+import { exclude } from "../utils/exclude";
 
 const Game: Component = () => {
   const [fail, setFail] = createSignal<boolean>(false);
@@ -25,11 +23,7 @@ const Game: Component = () => {
   const [snake, setSnake] = createSignal<[number, number][]>([[7, 7]]);
   const [direction, setDirection] = createSignal<Direction>("none");
 
-  const snakeAsIds = createMemo(() => toIds(snake()));
-  const appleAsId = createMemo(() => {
-    const g = apple();
-    return g && toId(g);
-  });
+  const snakeHead = createMemo(() => snake()[0]);
 
   createShortcut(["ArrowUp"], () => setDirection("up"));
   createShortcut(["ArrowDown"], () => setDirection("down"));
@@ -43,15 +37,14 @@ const Game: Component = () => {
     setFail(false);
   };
 
+  const addApple = () => {
+    const candidates = shuffle(exclude(matrixAsArray, snake()));
+    setApple(candidates[0]);
+  };
+
   const move = () => {
     if (["up", "down", "left", "right"].includes(direction())) {
-      const applePosition = apple();
-      const snakeHead = snake()[0];
-      const isEat = !!(
-        applePosition &&
-        applePosition[0] === snakeHead[0] &&
-        applePosition[1] === snakeHead[1]
-      );
+      const isEat = isArraysEqual(apple(), snakeHead());
 
       setSnake((prev) => moveSnake(prev, direction(), isEat));
       if (isEat) {
@@ -59,18 +52,6 @@ const Game: Component = () => {
         addApple();
       }
     }
-  };
-
-  const addApple = () => {
-    const candidates = shuffle(
-      matrixIds.filter((id) => !toIds(snake()).includes(id))
-    );
-    const first = candidates[0].split(":").map((s) => parseInt(s, 10)) as [
-      number,
-      number
-    ];
-
-    setApple(first);
   };
 
   createEffect(() => {
@@ -84,6 +65,15 @@ const Game: Component = () => {
       setFail(true);
     }
   });
+
+  const getCellClass = (cell: [number, number]) => {
+    if (isArrayIncludesArray(snake(), cell)) {
+      if (isArraysEqual(snakeHead(), cell)) return "bg-lime-500 rounded-sm";
+      return "bg-lime-600 rounded-sm";
+    }
+    if (isArraysEqual(apple(), cell)) return "bg-red-500/90 rounded-lg";
+    return "bg-lime-700";
+  };
 
   const interval = setInterval(() => {
     if (!apple()) addApple();
@@ -99,26 +89,10 @@ const Game: Component = () => {
           <div>Snake</div>
           <div>{score()}</div>
         </div>
-        <div class="w-80 h-80 bg-lime-800 flex flex-wrap">
-          <For each={matrix}>
-            {(cols) => (
-              <For each={cols}>
-                {(col) => (
-                  <div class="w-5 h-5 bg-lime-700 flex relative">
-                    <Show when={appleAsId() === col}>
-                      <Apple />
-                    </Show>
-                    <Show when={snakeAsIds().includes(col)}>
-                      <Show when={snakeAsIds()[0] === col}>
-                        <SnakeHead />
-                      </Show>
-                      <Show when={snakeAsIds()[0] !== col}>
-                        <Snake />
-                      </Show>
-                    </Show>
-                  </div>
-                )}
-              </For>
+        <div class="w-80 h-80 bg-lime-700 flex flex-wrap">
+          <For each={matrixAsArray}>
+            {(cell) => (
+              <div class={`w-5 h-5 flex relative ${getCellClass(cell)}`} />
             )}
           </For>
           <Show when={fail()}>
