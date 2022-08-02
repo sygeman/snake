@@ -25,10 +25,18 @@ const Game: Component = () => {
 
   const snakeHead = createMemo(() => snake()[0]);
 
-  createShortcut(["ArrowUp"], () => setDirection("up"));
-  createShortcut(["ArrowDown"], () => setDirection("down"));
-  createShortcut(["ArrowLeft"], () => setDirection("left"));
-  createShortcut(["ArrowRight"], () => setDirection("right"));
+  const changeDirection = (newDirection: Direction) => {
+    if (direction() === "up" && newDirection === "down") return;
+    if (direction() === "down" && newDirection === "up") return;
+    if (direction() === "left" && newDirection === "right") return;
+    if (direction() === "right" && newDirection === "left") return;
+    setDirection(newDirection);
+  };
+
+  createShortcut(["ArrowUp"], () => changeDirection("up"));
+  createShortcut(["ArrowDown"], () => changeDirection("down"));
+  createShortcut(["ArrowLeft"], () => changeDirection("left"));
+  createShortcut(["ArrowRight"], () => changeDirection("right"));
 
   const reset = () => {
     setDirection("none");
