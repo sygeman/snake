@@ -88,6 +88,13 @@ const Game: Component = () => {
 
   return (
     <div class="bg-lime-900 h-screen w-screen absolute inset-0 flex items-center justify-center">
+      <a
+        class="absolute right-4 top-2 text-white/50 font-medium"
+        target="blank"
+        href="https://github.com/sygeman/snake"
+      >
+        Github
+      </a>
       <div class="w-80 scale-150 relative rounded overflow-hidden">
         <div class="flex w-full justify-between text-white/50">
           <div>Snake</div>
