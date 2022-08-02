@@ -73,7 +73,7 @@ const Snake = () => (
 );
 
 const App: Component = () => {
-  const [fail, setFail] = createSignal<boolean>(true);
+  const [fail, setFail] = createSignal<boolean>(false);
   const [score, setScore] = createSignal<number>(0);
   const [direction, setDirection] = createSignal<Direction>("none");
   const [apple, setApple] = createSignal<[number, number] | null>();
