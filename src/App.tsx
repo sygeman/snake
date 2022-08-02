@@ -26,33 +26,61 @@ const matrix = createMatrix();
 let matrixIds: string[] = [];
 matrix.forEach((cols) => cols.forEach((col) => matrixIds.push(col)));
 
-const moveSnake = (snake: [number, number][], direction: Direction) => {
-  switch (direction) {
-    case "up":
-      return snake.map(([row, col]) => [row - 1, col] as [number, number]);
-    case "down":
-      return snake.map(([row, col]) => [row + 1, col] as [number, number]);
-    case "left":
-      return snake.map(([row, col]) => [row, col - 1] as [number, number]);
-    case "right":
-      return snake.map(([row, col]) => [row, col + 1] as [number, number]);
+const moveSnake = (
+  snake: [number, number][],
+  direction: Direction,
+  growth: boolean
+) => {
+  const [head] = snake;
+  let newSnake: [number, number][] = [];
+
+  for (let i = 0; i < snake.length; i++) {
+    if (i === 0) {
+      switch (direction) {
+        case "up":
+          newSnake.push([head[0] - 1, head[1]]);
+          break;
+        case "down":
+          newSnake.push([head[0] + 1, head[1]]);
+          break;
+        case "left":
+          newSnake.push([head[0], head[1] - 1]);
+          break;
+        case "right":
+          newSnake.push([head[0], head[1] + 1]);
+          break;
+      }
+    } else {
+      newSnake.push(snake[i - 1]);
+    }
   }
 
-  return snake;
+  if (growth) {
+    newSnake.push(snake[snake.length - 1]);
+  }
+
+  return newSnake;
 };
 
-const Gold = () => <div class="flex absolute w-5 h-5 bg-yellow-500" />;
-const SnakeHead = () => <div class="flex absolute w-5 h-5 bg-slate-700" />;
-const Snake = () => <div class="flex absolute w-5 h-5 bg-slate-800" />;
+const Apple = () => (
+  <div class="flex absolute w-5 h-5 bg-red-500/90 rounded-lg" />
+);
+const SnakeHead = () => (
+  <div class="flex absolute w-5 h-5 bg-lime-500 rounded-sm" />
+);
+const Snake = () => (
+  <div class="flex absolute w-5 h-5 bg-lime-600 rounded-sm" />
+);
 
 const App: Component = () => {
-  const [fail, setFail] = createSignal<boolean>(false);
+  const [fail, setFail] = createSignal<boolean>(true);
+  const [score, setScore] = createSignal<number>(0);
   const [direction, setDirection] = createSignal<Direction>("none");
-  const [gold, setGold] = createSignal<[number, number] | null>([3, 3]);
-  const [snake, setSnake] = createSignal<[number, number][]>([[5, 5]]);
+  const [apple, setApple] = createSignal<[number, number] | null>();
+  const [snake, setSnake] = createSignal<[number, number][]>([[7, 7]]);
 
-  const goldAsId = createMemo(() => {
-    const g = gold();
+  const appleAsId = createMemo(() => {
+    const g = apple();
     return g && toId(g);
   });
 
@@ -65,25 +93,30 @@ const App: Component = () => {
 
   const reset = () => {
     setDirection("none");
-    setGold([3, 3]);
+    setApple([3, 3]);
     setSnake([[5, 5]]);
     setFail(false);
   };
 
   const move = () => {
     if (["up", "down", "left", "right"].includes(direction())) {
-      setSnake((prev) => moveSnake(prev, direction()));
+      const applePosition = apple();
+      const snakeHead = snake()[0];
+      const isEat = !!(
+        applePosition &&
+        applePosition[0] === snakeHead[0] &&
+        applePosition[1] === snakeHead[1]
+      );
+
+      setSnake((prev) => moveSnake(prev, direction(), isEat));
+      if (isEat) {
+        setScore((prev) => prev + 1);
+        addApple();
+      }
     }
   };
 
-  const growth = () => {
-    setSnake((prev) => {
-      const [row, col] = prev[prev.length - 1];
-      return [...prev, [row, col + 1]];
-    });
-  };
-
-  const addGold = () => {
+  const addApple = () => {
     const candidates = shuffle(
       matrixIds.filter((id) => !toIds(snake()).includes(id))
     );
@@ -92,7 +125,7 @@ const App: Component = () => {
       number
     ];
 
-    setGold(first);
+    setApple(first);
   };
 
   // Validate snake position
@@ -105,44 +138,31 @@ const App: Component = () => {
 
     if (isOutbounds || isEatSelf) {
       setFail(true);
-      reset();
-    }
-  });
-
-  // Eat
-  createEffect(() => {
-    const goldPosition = gold();
-    const snakeHead = snake()[0];
-
-    if (
-      goldPosition &&
-      goldPosition[0] === snakeHead[0] &&
-      goldPosition[1] === snakeHead[1]
-    ) {
-      setGold(null);
-      growth();
     }
   });
 
   const interval = setInterval(() => {
-    if (!gold()) addGold();
+    if (!apple()) addApple();
     if (!fail()) move();
-  }, 500);
+  }, 400);
 
   onCleanup(() => clearInterval(interval));
 
   return (
     <div class="bg-lime-900 h-screen w-screen absolute inset-0 flex items-center justify-center">
-      <div class="w-80 scale-150">
-        <div class="text-white/50">{direction}</div>
+      <div class="w-80 scale-150 relative rounded overflow-hidden">
+        <div class="flex w-full justify-between text-white/50">
+          <div>Snake</div>
+          <div>{score()}</div>
+        </div>
         <div class="w-80 h-80 bg-lime-800 flex flex-wrap">
           <For each={matrix}>
             {(cols) => (
               <For each={cols}>
                 {(col) => (
                   <div class="w-5 h-5 bg-lime-700 flex relative">
-                    <Show when={goldAsId() === col}>
-                      <Gold />
+                    <Show when={appleAsId() === col}>
+                      <Apple />
                     </Show>
                     <Show when={snakeAsIds().includes(col)}>
                       <Show when={snakeAsIds()[0] === col}>
@@ -157,6 +177,18 @@ const App: Component = () => {
               </For>
             )}
           </For>
+          <Show when={fail()}>
+            <div class="absolute inset-0 w-full h-full flex flex-col items-center justify-center bg-lime-800 text-white/50 font-medium">
+              <div class="text-xl text-white">Nice try!</div>
+              <div class="mt-1">Score: {score}</div>
+              <button
+                class="bg-lime-700 hover:bg-lime-600 text-white/80 rounded mt-2 px-2"
+                onClick={() => reset()}
+              >
+                Retry
+              </button>
+            </div>
+          </Show>
         </div>
       </div>
     </div>
