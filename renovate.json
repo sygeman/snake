@@ -3,10 +3,8 @@
   "extends": ["config:base", ":disableDependencyDashboard"],
   "packageRules": [
     {
-      "matchPackagePatterns": ".*",
-      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "matchUpdateTypes": ["minor", "patch", "pin"],
       "automerge": true
     }
-  ],
-  "platformAutomerge": true
+  ]
 }
